@@ -32,8 +32,7 @@ public class LovelyDetectorPlugin extends JavaPlugin {
         this.modManager = new ModManager();
 
         PacketEvents.getAPI().init();
-        PacketEvents.getAPI().getEventManager().registerListener(
-            new DetectionListener(this), PacketListenerPriority.NORMAL);
+        PacketEvents.getAPI().getEventManager().registerListener(new DetectionListener(this));
 
         getServer().getPluginManager().registerEvents(new com.lovelydetector.gui.ModGUI(), this);
         getCommand("lovelydetector").setExecutor(new com.lovelydetector.commands.LovelyCommand(this));
