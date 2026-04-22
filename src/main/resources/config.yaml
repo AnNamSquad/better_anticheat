@@ -1,0 +1,7 @@
+# Lovely Detector Configuration
+prefix: "&8[&bLovelyDetector&8] "
+language: "vi"
+debug: false
+
+# How long to wait before timing out brand/payload packets
+check-timeout-ticks: 100

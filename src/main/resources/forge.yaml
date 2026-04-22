@@ -1,0 +1,11 @@
+# Forge/NeoForge mod detection list
+enabled: true
+
+# List of forbidden mod IDs
+forbidden-mods:
+  - "vape"
+  - "xray"
+  - "baritone"
+
+# Action to trigger
+action: generic_mod

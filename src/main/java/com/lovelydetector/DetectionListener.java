@@ -1,0 +1,126 @@
+package com.lovelydetector;
+
+import com.github.retrooper.packetevents.event.PacketListenerAbstract;
+import com.github.retrooper.packetevents.event.PacketReceiveEvent;
+import com.github.retrooper.packetevents.protocol.packettype.PacketType;
+import com.github.retrooper.packetevents.wrapper.play.client.WrapperPlayClientPluginMessage;
+import org.bukkit.Bukkit;
+import org.bukkit.configuration.file.FileConfiguration;
+import org.bukkit.entity.Player;
+
+import java.util.List;
+
+public class DetectionListener extends PacketListenerAbstract {
+
+    private final LovelyDetectorPlugin plugin;
+
+    public DetectionListener(LovelyDetectorPlugin plugin) {
+        this.plugin = plugin;
+    }
+
+    @Override
+    public void onPacketReceive(PacketReceiveEvent event) {
+        if (event.getPacketType() == PacketType.Play.Client.PLUGIN_MESSAGE) {
+            WrapperPlayClientPluginMessage wrapper = new WrapperPlayClientPluginMessage(event);
+            String channel = wrapper.getChannelName();
+
+            // Ignore players we can't fetch or Bedrock players
+            if (event.getPlayer() == null) return;
+            Player player = (Player) event.getPlayer();
+            if (plugin.getBedrockUtil().isBedrockPlayer(player.getUniqueId())) {
+                return;
+            }
+
+            if (channel.equals("minecraft:brand") || channel.equals("MC|Brand")) {
+                byte[] data = wrapper.getData();
+                if (data != null && data.length > 0) {
+                    String brand = new String(data).replaceAll("[^a-zA-Z0-9]", "").toLowerCase();
+                    plugin.getModManager().setClientType(player.getUniqueId(), brand);
+                    checkBrand(player, brand);
+                }
+            } else if (channel.equals("FML|HS") || channel.equals("fml:handshake")) {
+                byte[] data = wrapper.getData();
+                if (data != null && data.length > 2 && data[0] == 2) { // Discriminator 2 = ModList
+                    parseModList(player, data);
+                }
+            } else {
+                checkChannel(player, channel.toLowerCase());
+            }
+        }
+    }
+
+    private void parseModList(Player player, byte[] data) {
+        try {
+            // Simplified heuristic extraction from raw FML byte array
+            String raw = new String(data, java.nio.charset.StandardCharsets.UTF_8);
+            String[] parts = raw.split("[^a-zA-Z0-9_.-]+");
+            
+            for (int i = 0; i < parts.length - 1; i++) {
+                String modId = parts[i];
+                String version = parts[i + 1];
+                if (modId.length() > 2 && version.length() > 0 && Character.isDigit(version.charAt(0))) {
+                    plugin.getModManager().addMod(player.getUniqueId(), modId, version);
+                    
+                    // Trigger alert if blacklisted
+                    FileConfiguration forgeConfig = plugin.getConfigManager().getConfig("forge.yaml");
+                    if (forgeConfig.getBoolean("enabled", true)) {
+                        List<String> forbidden = forgeConfig.getStringList("forbidden-mods");
+                        if (forbidden.contains(modId.toLowerCase())) {
+                            plugin.getActionManager().triggerAction(player, forgeConfig.getString("action"), modId + " v" + version);
+                        }
+                    }
+                }
+            }
+        } catch (Exception ignored) {
+        }
+    }
+
+    private void checkBrand(Player player, String brand) {
+        FileConfiguration genericConfig = plugin.getConfigManager().getConfig("generic.yaml");
+        if (genericConfig.contains("brands")) {
+            for (String key : genericConfig.getConfigurationSection("brands").getKeys(false)) {
+                List<String> matches = genericConfig.getStringList("brands." + key + ".matches");
+                for (String match : matches) {
+                    if (brand.contains(match.toLowerCase())) {
+                        String action = genericConfig.getString("brands." + key + ".action");
+                        plugin.getActionManager().triggerAction(player, action, brand);
+                        return; // Avoid multiple triggers
+                    }
+                }
+            }
+        }
+
+        // Also check Forge
+        FileConfiguration forgeConfig = plugin.getConfigManager().getConfig("forge.yaml");
+        if (forgeConfig.getBoolean("enabled", true) && brand.contains("forge")) {
+            // Further Forge checks could read mod lists from FML handshake.
+            // For now, if forge is simply detected, check if we need to do something.
+        }
+        
+        // Check Lunar
+        FileConfiguration lunarConfig = plugin.getConfigManager().getConfig("lunar.yaml");
+        if (lunarConfig.getBoolean("enabled", true) && brand.contains("lunar")) {
+             String action = lunarConfig.getString("action", "labymod");
+             plugin.getActionManager().triggerAction(player, action, "Lunar Client");
+             if (lunarConfig.getBoolean("block-lunar", false)) {
+                 Bukkit.getScheduler().runTask(plugin, () -> player.kickPlayer("Lunar Client is not allowed."));
+             }
+        }
+    }
+
+    private void checkChannel(Player player, String channel) {
+        FileConfiguration genericConfig = plugin.getConfigManager().getConfig("generic.yaml");
+        if (genericConfig.contains("channels")) {
+            for (String key : genericConfig.getConfigurationSection("channels").getKeys(false)) {
+                List<String> matches = genericConfig.getStringList("channels." + key + ".matches");
+                for (String match : matches) {
+                    if (channel.contains(match.toLowerCase())) {
+                        String action = genericConfig.getString("channels." + key + ".action");
+                        plugin.getActionManager().triggerAction(player, action, channel);
+                        return;
+                    }
+                }
+            }
+        }
+    }
+}

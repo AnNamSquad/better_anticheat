@@ -1,0 +1,6 @@
+# Lunar Client Apollo integration settings
+enabled: true
+action: labymod # Reuse or define lunar specific action
+
+# If true, blocks connecting with Lunar
+block-lunar: false

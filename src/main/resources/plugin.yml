@@ -1,0 +1,16 @@
+main: com.lovelydetector.LovelyDetectorPlugin
+name: lovely-detector
+version: "${VERSION}"
+api-version: "1.18"
+author: Admin
+description: Detect cheats before they strike.
+softdepend: [packetevents, Geyser-Spigot, floodgate]
+commands:
+  lovelydetector:
+    description: Lovely Detector main command
+    aliases: [ld, lovely]
+    permission: lovelydetector.admin
+permissions:
+  lovelydetector.admin:
+    description: Allows managing the plugin and receiving alerts
+    default: op

@@ -1,0 +1,25 @@
+# Generic detection rules based on MC|Brand and Plugin Channels
+# Format:
+#   name: action_name
+#   matches: [list of substrings to match]
+
+brands:
+  vape:
+    action: vape
+    matches:
+      - "vape"
+  labymod:
+    action: labymod
+    matches:
+      - "labymod"
+  fabric:
+    action: generic_mod
+    matches:
+      - "fabric"
+
+channels:
+  worlddownloader:
+    action: generic_mod
+    matches:
+      - "wdl:init"
+      - "wdl:control"

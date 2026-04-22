@@ -1,0 +1,5 @@
+# Bedrock Edition player detection via Geyser/Floodgate
+enabled: true
+
+# If true, skips typical Java client checks (like MC|Brand) for Bedrock players
+skip-java-checks: true
