@@ -16,6 +16,10 @@ brands:
     action: generic_mod
     matches:
       - "fabric"
+  meteor:
+    action: generic_mod
+    matches:
+      - "meteor"
 
 channels:
   worlddownloader:
@@ -23,3 +27,7 @@ channels:
     matches:
       - "wdl:init"
       - "wdl:control"
+  meteor:
+    action: generic_mod
+    matches:
+      - "meteor"

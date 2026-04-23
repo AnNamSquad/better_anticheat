@@ -38,6 +38,26 @@ public class DetectionListener extends PacketListenerAbstract {
                     plugin.getModManager().setClientType(player.getUniqueId(), brand);
                     checkBrand(player, brand);
                 }
+            } else if (channel.equals("minecraft:register") || channel.equals("REGISTER")) {
+                byte[] data = wrapper.getData();
+                if (data != null && data.length > 0) {
+                    String channelsStr = new String(data, java.nio.charset.StandardCharsets.UTF_8);
+                    String[] registeredChannels = channelsStr.split("\0");
+                    for (String regChannel : registeredChannels) {
+                        String lowerChannel = regChannel.toLowerCase();
+                        checkChannel(player, lowerChannel);
+                        
+                        String currentType = plugin.getModManager().getClientType(player.getUniqueId());
+                        if (lowerChannel.contains("fabric") && currentType.equalsIgnoreCase("Vanilla")) {
+                            plugin.getModManager().setClientType(player.getUniqueId(), "fabric");
+                            checkBrand(player, "fabric");
+                        }
+                        if (lowerChannel.contains("meteor")) {
+                            plugin.getModManager().setClientType(player.getUniqueId(), "meteor");
+                            checkBrand(player, "meteor");
+                        }
+                    }
+                }
             } else if (channel.equals("FML|HS") || channel.equals("fml:handshake")) {
                 byte[] data = wrapper.getData();
                 if (data != null && data.length > 2 && data[0] == 2) { // Discriminator 2 = ModList
