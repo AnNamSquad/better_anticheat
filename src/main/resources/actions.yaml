@@ -11,6 +11,8 @@ punishments:
   generic_mod:
     - type: ALERT
       message: "&e%player% &7might be using an unallowed mod: &e%mod%&7."
+    - type: KICK
+      message: "&cYou have been kicked for using an unallowed mod: &e%mod%"
 
   labymod:
     - type: ALERT

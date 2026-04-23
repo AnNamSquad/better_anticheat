@@ -27,7 +27,7 @@ public class LovelyCommand implements CommandExecutor {
         }
 
         if (args.length < 2) {
-            sender.sendMessage(ChatColor.RED + "Usage: /ld check <player> OR /ld forge check <player>");
+            sender.sendMessage(ChatColor.RED + "Usage: /ld check <player> OR /ld mods check <player>");
             return true;
         }
 
@@ -46,7 +46,7 @@ public class LovelyCommand implements CommandExecutor {
             return true;
         }
 
-        if (args.length == 3 && args[0].equalsIgnoreCase("forge") && args[1].equalsIgnoreCase("check")) {
+        if (args.length == 3 && (args[0].equalsIgnoreCase("forge") || args[0].equalsIgnoreCase("mods")) && args[1].equalsIgnoreCase("check")) {
             Player target = Bukkit.getPlayer(args[2]);
             if (target == null) {
                 sender.sendMessage(ChatColor.RED + "Player not found.");
