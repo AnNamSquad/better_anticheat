@@ -9,16 +9,11 @@ import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.entity.Player;
 
 import java.util.List;
-import java.util.Map;
-import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
 import com.github.retrooper.packetevents.wrapper.play.client.WrapperPlayClientResourcePackStatus;
 
 public class DetectionListener extends PacketListenerAbstract {
 
     private final LovelyDetectorPlugin plugin;
-    private final Map<UUID, Long> resourcePackAcceptTime = new ConcurrentHashMap<>();
-    private final Map<UUID, Boolean> hasRegisteredChannels = new ConcurrentHashMap<>();
 
     public DetectionListener(LovelyDetectorPlugin plugin) {
         this.plugin = plugin;
@@ -26,10 +21,7 @@ public class DetectionListener extends PacketListenerAbstract {
 
     @Override
     public void onUserDisconnect(com.github.retrooper.packetevents.event.UserDisconnectEvent event) {
-        if (event.getUser() != null) {
-            resourcePackAcceptTime.remove(event.getUser().getUUID());
-            hasRegisteredChannels.remove(event.getUser().getUUID());
-        }
+        // Cleanup not needed for heuristics anymore
     }
 
     @Override
@@ -51,17 +43,8 @@ public class DetectionListener extends PacketListenerAbstract {
                     String brand = new String(data).replaceAll("[^a-zA-Z0-9]", "").toLowerCase();
                     plugin.getModManager().setClientType(player.getUniqueId(), brand);
                     checkBrand(player, brand);
-                    
-                    // Meteor ServerSpoof block-channels flaw check
-                    Bukkit.getScheduler().runTaskLater(plugin, () -> {
-                        if (player.isOnline() && !hasRegisteredChannels.getOrDefault(player.getUniqueId(), false)) {
-                            plugin.getModManager().setClientType(player.getUniqueId(), "meteor-spoof");
-                            plugin.getActionManager().triggerAction(player, "generic_mod", "Meteor Client (Blocked Channels)");
-                        }
-                    }, 40L); // wait 2 seconds after brand
                 }
             } else if (channel.equals("minecraft:register") || channel.equals("REGISTER")) {
-                hasRegisteredChannels.put(player.getUniqueId(), true);
                 byte[] data = wrapper.getData();
                 if (data != null && data.length > 0) {
                     String channelsStr = new String(data, java.nio.charset.StandardCharsets.UTF_8);
@@ -95,26 +78,6 @@ public class DetectionListener extends PacketListenerAbstract {
                 }
             } else {
                 checkChannel(player, channel.toLowerCase());
-            }
-        } else if (event.getPacketType() == PacketType.Play.Client.RESOURCE_PACK_STATUS) {
-            WrapperPlayClientResourcePackStatus wrapper = new WrapperPlayClientResourcePackStatus(event);
-            Player player = (Player) event.getPlayer();
-            if (player == null) return;
-            
-            String result = wrapper.getResult().name();
-            if (result.equals("ACCEPTED")) {
-                resourcePackAcceptTime.put(player.getUniqueId(), System.currentTimeMillis());
-            } else if (result.equals("SUCCESSFULLY_LOADED")) {
-                Long acceptTime = resourcePackAcceptTime.remove(player.getUniqueId());
-                if (acceptTime != null && (System.currentTimeMillis() - acceptTime) < 50) {
-                    // Impossible for a human/legit client to accept and load a pack in <50ms
-                    Bukkit.getScheduler().runTask(plugin, () -> {
-                        if (player.isOnline()) {
-                            plugin.getModManager().setClientType(player.getUniqueId(), "meteor-spoof");
-                            plugin.getActionManager().triggerAction(player, "generic_mod", "Meteor Client (ResourcePack Spoof)");
-                        }
-                    });
-                }
             }
         }
     }

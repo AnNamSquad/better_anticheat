@@ -13,13 +13,17 @@ brands:
     matches:
       - "labymod"
   fabric:
-    action: generic_mod
+    action: fabric_mod
     matches:
       - "fabric"
   meteor:
     action: generic_mod
     matches:
       - "meteor"
+  opsec:
+    action: generic_mod
+    matches:
+      - "opsec"
 
 channels:
   worlddownloader:
@@ -31,3 +35,7 @@ channels:
     action: generic_mod
     matches:
       - "meteor"
+  opsec:
+    action: generic_mod
+    matches:
+      - "opsec"

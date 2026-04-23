@@ -17,3 +17,7 @@ punishments:
   labymod:
     - type: ALERT
       message: "&b%player% &7connected using &bLabyMod&7."
+
+  fabric_mod:
+    - type: ALERT
+      message: "&e%player% &7is using a &eFabric&7 client (possibly legitimate mods)."
