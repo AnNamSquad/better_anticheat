@@ -24,6 +24,14 @@ brands:
     action: generic_mod
     matches:
       - "opsec"
+  liteloader:
+    action: generic_mod
+    matches:
+      - "liteloader"
+  rift:
+    action: generic_mod
+    matches:
+      - "rift"
 
 channels:
   worlddownloader:
@@ -39,3 +47,27 @@ channels:
     action: generic_mod
     matches:
       - "opsec"
+  "5zig Mod":
+    action: generic_mod
+    matches:
+      - "5zig_set"
+  "PX Mod":
+    action: generic_mod
+    matches:
+      - "px|version"
+  "Better Sprinting":
+    action: generic_mod
+    matches:
+      - "bsprint"
+  "World Edit CUI":
+    action: generic_mod
+    matches:
+      - "wecui"
+  "Vape":
+    action: vape
+    matches:
+      - "lolimahcker"
+  "ExampleClient":
+    action: generic_mod
+    matches:
+      - "example channel"

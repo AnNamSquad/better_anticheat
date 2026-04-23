@@ -18,30 +18,48 @@ import java.util.Map;
 public class ModGUI implements Listener {
 
     public static void open(Player viewer, Player target, Map<String, String> mods) {
-        int size = Math.min(54, Math.max(9, (int) Math.ceil(mods.size() / 9.0) * 9));
-        if (size == 0) size = 9; // Minimum size
+        com.lovelydetector.LovelyDetectorPlugin plugin = org.bukkit.plugin.java.JavaPlugin.getPlugin(com.lovelydetector.LovelyDetectorPlugin.class);
+        String clientType = plugin.getModManager().getClientType(target.getUniqueId());
+        
+        // Ensure proper capitalization
+        if (clientType == null || clientType.isEmpty()) clientType = "Unknown";
+        clientType = clientType.substring(0, 1).toUpperCase() + clientType.substring(1).toLowerCase();
 
-        Inventory inv = Bukkit.createInventory(null, size, ChatColor.DARK_BLUE + target.getName() + "'s mods");
+        Inventory inv = Bukkit.createInventory(null, 54, ChatColor.DARK_BLUE + clientType + "'s users");
 
-        for (Map.Entry<String, String> entry : mods.entrySet()) {
-            ItemStack item = new ItemStack(Material.PAPER);
-            ItemMeta meta = item.getItemMeta();
-            if (meta != null) {
-                meta.setDisplayName(ChatColor.YELLOW + entry.getKey());
-                List<String> lore = new ArrayList<>();
-                lore.add(ChatColor.GRAY + "Version: " + ChatColor.GREEN + entry.getValue());
-                meta.setLore(lore);
-                item.setItemMeta(meta);
+        ItemStack item = new ItemStack(Material.BOOK);
+        ItemMeta meta = item.getItemMeta();
+        if (meta != null) {
+            // e.g. [Fabric] zodasic
+            meta.setDisplayName(ChatColor.DARK_GRAY + "[" + ChatColor.GRAY + clientType + ChatColor.DARK_GRAY + "] " + ChatColor.GOLD + target.getName());
+            
+            List<String> lore = new ArrayList<>();
+            for (Map.Entry<String, String> entry : mods.entrySet()) {
+                String modId = entry.getKey();
+                String version = entry.getValue();
+                
+                // Format version nicely
+                if (version.equals("channel")) {
+                    version = "v?";
+                } else if (!version.startsWith("v") && !version.startsWith("V")) {
+                    version = "v" + version;
+                }
+                
+                lore.add(ChatColor.DARK_GRAY + "- " + ChatColor.GREEN + modId + ChatColor.GRAY + " " + version);
             }
-            inv.addItem(item);
+            meta.setLore(lore);
+            item.setItemMeta(meta);
         }
+        
+        // Place the book in the first slot
+        inv.setItem(0, item);
 
         viewer.openInventory(inv);
     }
 
     @EventHandler
     public void onClick(InventoryClickEvent event) {
-        if (event.getView().getTitle().endsWith("'s mods")) {
+        if (event.getView().getTitle().endsWith("'s users")) {
             event.setCancelled(true);
         }
     }
