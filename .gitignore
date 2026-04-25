@@ -39,3 +39,4 @@ build/
 ### Mac OS ###
 .DS_Store
 /meteor-client
+/HackedServer-3.17.2

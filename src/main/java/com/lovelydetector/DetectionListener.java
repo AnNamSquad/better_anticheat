@@ -4,12 +4,15 @@ import com.github.retrooper.packetevents.event.PacketListenerAbstract;
 import com.github.retrooper.packetevents.event.PacketReceiveEvent;
 import com.github.retrooper.packetevents.protocol.packettype.PacketType;
 import com.github.retrooper.packetevents.wrapper.play.client.WrapperPlayClientPluginMessage;
+import com.lovelydetector.models.ForgeModInfo;
+import com.lovelydetector.models.LunarModInfo;
+import com.lovelydetector.parsers.ForgeParser;
+import com.lovelydetector.parsers.LunarParser;
 import org.bukkit.Bukkit;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.entity.Player;
 
 import java.util.List;
-import com.github.retrooper.packetevents.wrapper.play.client.WrapperPlayClientResourcePackStatus;
 
 public class DetectionListener extends PacketListenerAbstract {
 
@@ -21,7 +24,7 @@ public class DetectionListener extends PacketListenerAbstract {
 
     @Override
     public void onUserDisconnect(com.github.retrooper.packetevents.event.UserDisconnectEvent event) {
-        // Cleanup not needed for heuristics anymore
+        // Cleanup handled in ModGUI's PlayerQuitEvent
     }
 
     @Override
@@ -30,51 +33,79 @@ public class DetectionListener extends PacketListenerAbstract {
             WrapperPlayClientPluginMessage wrapper = new WrapperPlayClientPluginMessage(event);
             String channel = wrapper.getChannelName();
 
-            // Ignore players we can't fetch or Bedrock players
             if (event.getPlayer() == null) return;
             Player player = (Player) event.getPlayer();
             if (plugin.getBedrockUtil().isBedrockPlayer(player.getUniqueId())) {
                 return;
             }
 
+            byte[] data = wrapper.getData();
+            if (data == null || data.length == 0) return;
+
             if (channel.equals("minecraft:brand") || channel.equals("MC|Brand")) {
-                byte[] data = wrapper.getData();
-                if (data != null && data.length > 0) {
-                    String brand = new String(data).replaceAll("[^a-zA-Z0-9]", "").toLowerCase();
-                    plugin.getModManager().setClientType(player.getUniqueId(), brand);
-                    checkBrand(player, brand);
+                String brand = new String(data).replaceAll("[^a-zA-Z0-9_-]", "").toLowerCase();
+                plugin.getModManager().setClientType(player.getUniqueId(), brand);
+                checkBrand(player, brand);
+                
+                String forgeType = ForgeParser.parseClientType(brand);
+                if (forgeType != null) {
+                    plugin.getModManager().setClientType(player.getUniqueId(), forgeType);
+                    FileConfiguration forgeConfig = plugin.getConfigManager().getConfig("forge.yaml");
+                    if (forgeConfig.getBoolean("enabled", true)) {
+                        plugin.getActionManager().triggerAction(player, forgeConfig.getString("action"), forgeType);
+                    }
                 }
             } else if (channel.equals("minecraft:register") || channel.equals("REGISTER")) {
-                byte[] data = wrapper.getData();
-                if (data != null && data.length > 0) {
-                    String channelsStr = new String(data, java.nio.charset.StandardCharsets.UTF_8);
-                    String[] registeredChannels = channelsStr.split("\0");
-                    for (String regChannel : registeredChannels) {
-                        if (regChannel.isEmpty()) continue;
-                        
-                        // Add non-standard channels to the GUI "mod" list for visibility
-                        if (!regChannel.startsWith("minecraft:")) {
-                            plugin.getModManager().addMod(player.getUniqueId(), regChannel, "channel");
-                        }
-
-                        String lowerChannel = regChannel.toLowerCase();
-                        checkChannel(player, lowerChannel);
-                        
-                        String currentType = plugin.getModManager().getClientType(player.getUniqueId());
-                        if (lowerChannel.contains("fabric") && currentType.equalsIgnoreCase("Vanilla")) {
-                            plugin.getModManager().setClientType(player.getUniqueId(), "fabric");
-                            checkBrand(player, "fabric");
-                        }
-                        if (lowerChannel.contains("meteor")) {
-                            plugin.getModManager().setClientType(player.getUniqueId(), "meteor");
-                            checkBrand(player, "meteor");
+                String channelsStr = new String(data, java.nio.charset.StandardCharsets.UTF_8);
+                String[] registeredChannels = channelsStr.split("\0");
+                for (String regChannel : registeredChannels) {
+                    if (regChannel.isEmpty()) continue;
+                    if (!regChannel.startsWith("minecraft:")) {
+                        plugin.getModManager().addMod(player.getUniqueId(), regChannel, "channel");
+                    }
+                    String lowerChannel = regChannel.toLowerCase();
+                    checkChannel(player, lowerChannel);
+                    
+                    String currentType = plugin.getModManager().getClientType(player.getUniqueId());
+                    if (lowerChannel.contains("fabric") && currentType.equalsIgnoreCase("Vanilla")) {
+                        plugin.getModManager().setClientType(player.getUniqueId(), "fabric");
+                        checkBrand(player, "fabric");
+                    }
+                    if (lowerChannel.contains("meteor")) {
+                        plugin.getModManager().setClientType(player.getUniqueId(), "meteor");
+                        checkBrand(player, "meteor");
+                    }
+                }
+                
+                List<ForgeModInfo> forgeMods = ForgeParser.parseRegisteredChannels(channelsStr);
+                if (!forgeMods.isEmpty()) {
+                    plugin.getModManager().addForgeMods(player.getUniqueId(), forgeMods);
+                    FileConfiguration forgeConfig = plugin.getConfigManager().getConfig("forge.yaml");
+                    if (forgeConfig.getBoolean("enabled", true)) {
+                        List<String> forbidden = forgeConfig.getStringList("forbidden-mods");
+                        for (ForgeModInfo mod : forgeMods) {
+                            if (forbidden.contains(mod.getModId().toLowerCase())) {
+                                plugin.getActionManager().triggerAction(player, forgeConfig.getString("action"), mod.getModId());
+                            }
                         }
                     }
                 }
             } else if (channel.equals("FML|HS") || channel.equals("fml:handshake")) {
-                byte[] data = wrapper.getData();
-                if (data != null && data.length > 2 && data[0] == 2) { // Discriminator 2 = ModList
-                    parseModList(player, data);
+                if (data.length > 2 && data[0] == 2) {
+                    parseFmlModList(player, data);
+                }
+            } else if (channel.equals("lunar:apollo") || channel.equals("lunarclient:pm") || channel.equals("Lunar-Client")) {
+                List<LunarModInfo> lunarMods = LunarParser.parseModsHeuristic(data);
+                plugin.getModManager().setClientType(player.getUniqueId(), "lunar");
+                if (!lunarMods.isEmpty()) {
+                    plugin.getModManager().addLunarMods(player.getUniqueId(), lunarMods);
+                }
+                FileConfiguration lunarConfig = plugin.getConfigManager().getConfig("lunar.yaml");
+                if (lunarConfig.getBoolean("enabled", true)) {
+                    plugin.getActionManager().triggerAction(player, lunarConfig.getString("action", "labymod"), "Lunar Client");
+                    if (lunarConfig.getBoolean("block-lunar", false)) {
+                        Bukkit.getScheduler().runTask(plugin, () -> player.kickPlayer("Lunar Client is not allowed."));
+                    }
                 }
             } else {
                 checkChannel(player, channel.toLowerCase());
@@ -82,9 +113,8 @@ public class DetectionListener extends PacketListenerAbstract {
         }
     }
 
-    private void parseModList(Player player, byte[] data) {
+    private void parseFmlModList(Player player, byte[] data) {
         try {
-            // Simplified heuristic extraction from raw FML byte array
             String raw = new String(data, java.nio.charset.StandardCharsets.UTF_8);
             String[] parts = raw.split("[^a-zA-Z0-9_.-]+");
             
@@ -93,13 +123,14 @@ public class DetectionListener extends PacketListenerAbstract {
                 String version = parts[i + 1];
                 if (modId.length() > 2 && version.length() > 0 && Character.isDigit(version.charAt(0))) {
                     plugin.getModManager().addMod(player.getUniqueId(), modId, version);
+                    ForgeModInfo forgeMod = new ForgeModInfo(modId, version);
+                    plugin.getModManager().addForgeMods(player.getUniqueId(), List.of(forgeMod));
                     
-                    // Trigger alert if blacklisted
                     FileConfiguration forgeConfig = plugin.getConfigManager().getConfig("forge.yaml");
                     if (forgeConfig.getBoolean("enabled", true)) {
                         List<String> forbidden = forgeConfig.getStringList("forbidden-mods");
                         if (forbidden.contains(modId.toLowerCase())) {
-                            plugin.getActionManager().triggerAction(player, forgeConfig.getString("action"), modId + " v" + version);
+                            plugin.getActionManager().triggerAction(player, forgeConfig.getString("action"), forgeMod.toString());
                         }
                     }
                 }
@@ -117,27 +148,10 @@ public class DetectionListener extends PacketListenerAbstract {
                     if (brand.contains(match.toLowerCase())) {
                         String action = genericConfig.getString("brands." + key + ".action");
                         plugin.getActionManager().triggerAction(player, action, brand);
-                        return; // Avoid multiple triggers
+                        return;
                     }
                 }
             }
-        }
-
-        // Also check Forge
-        FileConfiguration forgeConfig = plugin.getConfigManager().getConfig("forge.yaml");
-        if (forgeConfig.getBoolean("enabled", true) && brand.contains("forge")) {
-            // Further Forge checks could read mod lists from FML handshake.
-            // For now, if forge is simply detected, check if we need to do something.
-        }
-        
-        // Check Lunar
-        FileConfiguration lunarConfig = plugin.getConfigManager().getConfig("lunar.yaml");
-        if (lunarConfig.getBoolean("enabled", true) && brand.contains("lunar")) {
-             String action = lunarConfig.getString("action", "labymod");
-             plugin.getActionManager().triggerAction(player, action, "Lunar Client");
-             if (lunarConfig.getBoolean("block-lunar", false)) {
-                 Bukkit.getScheduler().runTask(plugin, () -> player.kickPlayer("Lunar Client is not allowed."));
-             }
         }
     }
 
