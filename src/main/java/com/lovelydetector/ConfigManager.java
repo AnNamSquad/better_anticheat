@@ -20,7 +20,7 @@ public class ConfigManager {
     }
 
     public void loadConfigs() {
-        String[] files = {"config.yaml", "actions.yaml", "generic.yaml", "lunar.yaml", "forge.yaml", "bedrock.yaml", "languages/vi.yaml"};
+        String[] files = {"config.yaml", "actions.yaml", "generic.yaml", "lunar.yaml", "forge.yaml", "bedrock.yaml", "languages/vi.yaml", "sign-checks.yaml"};
         for (String fileName : files) {
             File file = new File(plugin.getDataFolder(), fileName);
             if (!file.exists()) {
@@ -40,5 +40,20 @@ public class ConfigManager {
 
     public FileConfiguration getConfig(String name) {
         return configs.get(name);
+    }
+
+    public java.util.List<com.lovelydetector.models.SignCheckConfig> getSignChecks() {
+        java.util.List<com.lovelydetector.models.SignCheckConfig> checks = new java.util.ArrayList<>();
+        FileConfiguration config = getConfig("sign-checks.yaml");
+        if (config == null || !config.contains("hacks")) return checks;
+        
+        for (String id : config.getConfigurationSection("hacks").getKeys(false)) {
+            String path = "hacks." + id + ".";
+            String displayName = config.getString(path + "display-name", id);
+            String key = config.getString(path + "key", "");
+            String mode = config.getString(path + "mode", "KEYBIND");
+            checks.add(new com.lovelydetector.models.SignCheckConfig(id, displayName, key, mode));
+        }
+        return checks;
     }
 }

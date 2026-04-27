@@ -60,9 +60,7 @@ public class DetectionListener extends PacketListenerAbstract {
                 String[] registeredChannels = channelsStr.split("\0");
                 for (String regChannel : registeredChannels) {
                     if (regChannel.isEmpty()) continue;
-                    if (!regChannel.startsWith("minecraft:")) {
-                        plugin.getModManager().addMod(player.getUniqueId(), regChannel, "channel");
-                    }
+
                     String lowerChannel = regChannel.toLowerCase();
                     checkChannel(player, lowerChannel);
                     
@@ -109,6 +107,22 @@ public class DetectionListener extends PacketListenerAbstract {
                 }
             } else {
                 checkChannel(player, channel.toLowerCase());
+            }
+        } else if (event.getPacketType() == PacketType.Play.Client.UPDATE_SIGN) {
+            if (event.getPlayer() == null) return;
+            Player player = (Player) event.getPlayer();
+            if (plugin.getSignCheckManager() != null && plugin.getSignCheckManager().isChecking(player.getUniqueId())) {
+                event.setCancelled(true);
+                com.github.retrooper.packetevents.wrapper.play.client.WrapperPlayClientUpdateSign wrapper = 
+                    new com.github.retrooper.packetevents.wrapper.play.client.WrapperPlayClientUpdateSign(event);
+                
+                String[] lines = new String[4];
+                lines[0] = wrapper.getTextLines()[0];
+                lines[1] = wrapper.getTextLines()[1];
+                lines[2] = wrapper.getTextLines()[2];
+                lines[3] = wrapper.getTextLines()[3];
+                
+                plugin.getSignCheckManager().handleSignResponse(player, lines);
             }
         }
     }

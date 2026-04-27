@@ -33,6 +33,7 @@ public class LovelyCommand implements CommandExecutor {
             sender.sendMessage(ChatColor.WHITE + "/ld reload " + ChatColor.GRAY + "- Reload configs");
             sender.sendMessage(ChatColor.WHITE + "/ld list " + ChatColor.GRAY + "- List players with mods");
             sender.sendMessage(ChatColor.WHITE + "/ld check <player> " + ChatColor.GRAY + "- Check a player's mods");
+            sender.sendMessage(ChatColor.WHITE + "/ld signcheck <player> " + ChatColor.GRAY + "- Force sign-based hack check");
             sender.sendMessage(ChatColor.WHITE + "/ld inv " + ChatColor.GRAY + "- Open global players GUI");
             return true;
         }
@@ -59,6 +60,19 @@ public class LovelyCommand implements CommandExecutor {
                 if (!clientType.equalsIgnoreCase("Vanilla")) {
                     sender.sendMessage(ChatColor.WHITE + player.getName() + ChatColor.GRAY + " - " + ChatColor.GREEN + clientType);
                 }
+            }
+            return true;
+        }
+
+        if (args[0].equalsIgnoreCase("signcheck") && args.length >= 2) {
+            Player target = Bukkit.getPlayer(args[1]);
+            if (target == null) {
+                sender.sendMessage(ChatColor.RED + "Player not found.");
+                return true;
+            }
+            if (plugin.getSignCheckManager() != null) {
+                plugin.getSignCheckManager().startCheck(target);
+                sender.sendMessage(ChatColor.GREEN + "Started SignCheck for " + target.getName() + "!");
             }
             return true;
         }

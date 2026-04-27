@@ -12,6 +12,7 @@ public class LovelyDetectorPlugin extends JavaPlugin {
     private ActionManager actionManager;
     private BedrockUtil bedrockUtil;
     private ModManager modManager;
+    private com.lovelydetector.managers.SignCheckManager signCheckManager;
 
     @Override
     public void onLoad() {
@@ -30,12 +31,14 @@ public class LovelyDetectorPlugin extends JavaPlugin {
         this.actionManager = new ActionManager(this);
         this.bedrockUtil = new BedrockUtil(this);
         this.modManager = new ModManager();
+        this.signCheckManager = new com.lovelydetector.managers.SignCheckManager(this);
 
         PacketEvents.getAPI().init();
         PacketEvents.getAPI().getEventManager().registerListener(new DetectionListener(this));
 
         getServer().getPluginManager().registerEvents(new com.lovelydetector.gui.ModGUI(), this);
         getServer().getPluginManager().registerEvents(new com.lovelydetector.gui.GlobalGUI(), this);
+        getServer().getPluginManager().registerEvents(new com.lovelydetector.listeners.JoinListener(this), this);
         getCommand("lovelydetector").setExecutor(new com.lovelydetector.commands.LovelyCommand(this));
 
         org.bukkit.command.ConsoleCommandSender console = Bukkit.getConsoleSender();
@@ -72,5 +75,9 @@ public class LovelyDetectorPlugin extends JavaPlugin {
 
     public ModManager getModManager() {
         return modManager;
+    }
+
+    public com.lovelydetector.managers.SignCheckManager getSignCheckManager() {
+        return signCheckManager;
     }
 }
