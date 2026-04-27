@@ -84,6 +84,21 @@ hacks:
     key: "key.auto-clicker_.toggle"
     mode: "KEYBIND"
 
+  litematica:
+    display-name: "Litematica"
+    key: "litematica.hotkey.name.openmainmenuscreen"
+    mode: "TRANSLATE"
+
+  itemscroller:
+    display-name: "Item Scroller"
+    key: "itemscroller.hotkey.name.openconfigscreen"
+    mode: "TRANSLATE"
+
+  xaeros-minimap:
+    display-name: "Xaero's Minimap"
+    key: "gui.xaero_minimap"
+    mode: "TRANSLATE"
+
 settings:
   # Check players 2 seconds after joining
   check-on-join: true

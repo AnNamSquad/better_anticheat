@@ -24,7 +24,11 @@ public class ActionManager {
 
         if (actionSection == null) {
             // Fallback for backwards compatibility with old "punishments.name" list
-            triggerLegacyAction(player, actionName, checkName, actionsConfig);
+            if (!triggerLegacyAction(player, actionName, checkName, actionsConfig)) {
+                if (actionName.startsWith("signcheck-") && !actionName.equals("signcheck-fail")) {
+                    triggerAction(player, "signcheck-fail", checkName);
+                }
+            }
             return;
         }
 
@@ -97,9 +101,9 @@ public class ActionManager {
         }
     }
 
-    private void triggerLegacyAction(Player player, String actionName, String modName, FileConfiguration config) {
+    private boolean triggerLegacyAction(Player player, String actionName, String modName, FileConfiguration config) {
         List<java.util.Map<?, ?>> actions = config.getMapList("punishments." + actionName);
-        if (actions == null || actions.isEmpty()) return;
+        if (actions == null || actions.isEmpty()) return false;
 
         Bukkit.getScheduler().runTask(plugin, () -> {
             for (java.util.Map<?, ?> actionData : actions) {
@@ -124,7 +128,17 @@ public class ActionManager {
                 } else if ("KICK".equalsIgnoreCase(type)) {
                     player.kickPlayer(message);
                 } else if ("BAN".equalsIgnoreCase(type)) {
-                    Bukkit.getBanList(org.bukkit.BanList.Type.NAME).addBan(player.getName(), message, null, "LovelyDetector");
+                    java.util.Date expires = null;
+                    if (actionData.containsKey("duration")) {
+                        long durationMs = parseDuration(actionData.get("duration").toString());
+                        if (durationMs > 0) {
+                            expires = new java.util.Date(System.currentTimeMillis() + durationMs);
+                        } else {
+                            plugin.getLogger().warning("Invalid ban duration: " + actionData.get("duration"));
+                        }
+                    }
+                    Bukkit.getBanList(org.bukkit.BanList.Type.NAME).addBan(player.getName(), message, expires, "LovelyDetector");
+                    trackBan(player);
                     player.kickPlayer(message);
                 } else if ("COMMAND".equalsIgnoreCase(type)) {
                     String cmd = (String) actionData.get("command");
@@ -134,5 +148,45 @@ public class ActionManager {
                 }
             }
         });
+        return true;
+    }
+
+    private long parseDuration(String input) {
+        if (input == null || input.isEmpty()) return 0;
+        input = input.toLowerCase();
+        try {
+            if (input.endsWith("d")) {
+                return Long.parseLong(input.replace("d", "")) * 24 * 60 * 60000L;
+            } else if (input.endsWith("h")) {
+                return Long.parseLong(input.replace("h", "")) * 60 * 60000L;
+            } else if (input.endsWith("m")) {
+                return Long.parseLong(input.replace("m", "")) * 60000L;
+            } else {
+                return Long.parseLong(input) * 60000L; // default minutes
+            }
+        } catch (NumberFormatException e) {
+            return 0;
+        }
+    }
+
+    private void trackBan(Player player) {
+        java.io.File file = new java.io.File(plugin.getDataFolder(), "ban-history.yml");
+        org.bukkit.configuration.file.YamlConfiguration config = org.bukkit.configuration.file.YamlConfiguration.loadConfiguration(file);
+        String uuid = player.getUniqueId().toString();
+        int bans = config.getInt(uuid + ".count", 0) + 1;
+        config.set(uuid + ".count", bans);
+        config.set(uuid + ".name", player.getName());
+        try {
+            config.save(file);
+        } catch (java.io.IOException e) {
+            plugin.getLogger().severe("Could not save ban-history.yml");
+        }
+        
+        String prefix = ChatColor.translateAlternateColorCodes('&', plugin.getConfigManager().getConfig("config.yaml").getString("prefix", "&8[&bLovelyDetector&8] "));
+        for (Player admin : Bukkit.getOnlinePlayers()) {
+            if (admin.hasPermission("lovelydetector.admin")) {
+                admin.sendMessage(prefix + ChatColor.RED + player.getName() + " has been banned. Total bans: " + bans);
+            }
+        }
     }
 }

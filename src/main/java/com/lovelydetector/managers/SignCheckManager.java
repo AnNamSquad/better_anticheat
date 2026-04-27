@@ -162,7 +162,7 @@ public class SignCheckManager {
                 
                 // Trigger ActionManager
                 Bukkit.getScheduler().runTask(plugin, () -> {
-                    plugin.getActionManager().triggerAction(target, "signcheck-fail", hack.getDisplayName());
+                    plugin.getActionManager().triggerAction(target, "signcheck-" + hack.getId(), hack.getDisplayName());
                 });
             }
         }
@@ -224,7 +224,7 @@ public class SignCheckManager {
 
     private Location findAirBlock(Player player) {
         Location base = player.getLocation().clone();
-        for (int dy = 1; dy <= 5; dy++) {
+        for (int dy = 3; dy <= 7; dy++) {
             Location loc = base.clone().add(0, dy, 0);
             if (loc.getBlock().getType().isAir()) return loc;
         }

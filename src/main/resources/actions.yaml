@@ -21,3 +21,31 @@ punishments:
   fabric_mod:
     - type: ALERT
       message: "&e%player% &7is using a &eFabric&7 client (possibly legitimate mods)."
+
+  signcheck-fail:
+    - type: ALERT
+      message: "&c%player% &7was detected using &c%mod% &7via SignCheck!"
+    - type: BAN
+      duration: "15m"
+      message: "&cYou are banned for 15 minutes for using an unallowed mod: &e%mod%"
+
+  signcheck-meteor-client:
+    - type: ALERT
+      message: "&c%player% &7was detected using &c%mod% &7via SignCheck!"
+    - type: BAN
+      duration: "2d"
+      message: "&cYou are banned for 2 days for using an unallowed mod: &e%mod%"
+
+  signcheck-autoclicker-fabric:
+    - type: ALERT
+      message: "&c%player% &7was detected using &c%mod% &7via SignCheck!"
+    - type: BAN
+      duration: "15m"
+      message: "&cYou are banned for 15 minutes for using an unallowed mod: &e%mod%"
+
+  signcheck-auto-clicker-mc:
+    - type: ALERT
+      message: "&c%player% &7was detected using &c%mod% &7via SignCheck!"
+    - type: BAN
+      duration: "15m"
+      message: "&cYou are banned for 15 minutes for using an unallowed mod: &e%mod%"
