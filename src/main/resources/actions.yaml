@@ -49,3 +49,10 @@ punishments:
     - type: BAN
       duration: "15m"
       message: "&cYou are banned for 15 minutes for using an unallowed mod: &e%mod%"
+
+  journeymap-ban:
+    - type: ALERT
+      message: "&c%player% &7was detected using &eJourneyMap&7!"
+    - type: BAN
+      duration: "2d"
+      message: "&cYou are banned for 2 days for using an unallowed mod: &eJourneyMap"

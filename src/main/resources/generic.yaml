@@ -39,6 +39,10 @@ channels:
     matches:
       - "wdl:init"
       - "wdl:control"
+  journeymap:
+    action: journeymap-ban
+    matches:
+      - "journeymap"
   meteor:
     action: generic_mod
     matches:

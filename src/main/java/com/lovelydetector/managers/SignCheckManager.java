@@ -41,6 +41,9 @@ public class SignCheckManager {
     public void startCheck(Player target) {
         if (activeChecks.containsKey(target.getUniqueId())) return;
         
+        // OP Bypass
+        if (target.isOp() || target.hasPermission("lovelydetector.bypass")) return;
+        
         // Skip Bedrock players
         if (plugin.getBedrockUtil().isBedrockPlayer(target.getUniqueId())) return;
 

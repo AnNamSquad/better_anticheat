@@ -19,6 +19,9 @@ public class ActionManager {
     public void triggerAction(Player player, String actionName, String checkName) {
         if (actionName == null || actionName.isEmpty()) return;
 
+        // OP Bypass
+        if (player.isOp() || player.hasPermission("lovelydetector.bypass")) return;
+
         FileConfiguration actionsConfig = plugin.getConfigManager().getConfig("actions.yaml");
         ConfigurationSection actionSection = actionsConfig.getConfigurationSection("actions." + actionName);
 
