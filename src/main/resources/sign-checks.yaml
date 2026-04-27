@@ -99,6 +99,16 @@ hacks:
     key: "gui.xaero_minimap"
     mode: "TRANSLATE"
 
+  autototem:
+    display-name: "Auto Totem"
+    key: "key.autototem.toggle"
+    mode: "KEYBIND"
+
+  autototem-meteor:
+    display-name: "Auto Totem (Meteor)"
+    key: "key.meteor.autototem"
+    mode: "KEYBIND"
+
 settings:
   # Check players 2 seconds after joining
   check-on-join: true

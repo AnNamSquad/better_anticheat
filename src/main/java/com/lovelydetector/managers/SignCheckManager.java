@@ -124,9 +124,16 @@ public class SignCheckManager {
             CheckSession d = activeChecks.get(target.getUniqueId());
             if (d == null) return;
             restoreCurrentSign(d);
-            d.incrementBatch();
-            scheduleNextOrFinish(target.getUniqueId());
-        }, 100L); // 5 seconds timeout
+            
+            // If they time out, it's highly likely a mod like OpSec cancelled the packet.
+            plugin.getLogger().info("[LovelyDetector] " + target.getName() + " timed out on SignCheck (Possible Mod/OpSec bypass)!");
+            plugin.getModManager().addMod(target.getUniqueId(), "OpSec/Bypass", "SignCheck-Timeout");
+            Bukkit.getScheduler().runTask(plugin, () -> {
+                plugin.getActionManager().triggerAction(target, "signcheck-fail", "SignCheck Timeout (OpSec Bypass)");
+            });
+            
+            finishCheck(target.getUniqueId());
+        }, 300L); // 15 seconds timeout to account for loading/lag
 
         session.setSignTimeoutTask(timeout);
     }
