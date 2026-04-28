@@ -141,6 +141,9 @@ public class SignCheckManager {
     private Component buildComponent(SignCheckConfig hack) {
         if (hack.getMode().equalsIgnoreCase("KEYBIND")) {
             return Component.keybind(hack.getKey());
+        } else if (hack.getMode().equalsIgnoreCase("OPSEC_ARG")) {
+            Component canary = Component.translatable("key.keyboard.w");
+            return Component.translatable(hack.getKey(), hack.getDisplayName(), canary);
         } else {
             return Component.translatable(hack.getKey(), hack.getDisplayName());
         }
@@ -185,11 +188,15 @@ public class SignCheckManager {
         if (resp.isEmpty()) return false;
         
         if (hack.getMode().equalsIgnoreCase("METEOR")) {
-            return resp.equalsIgnoreCase(hack.getKey());
+            return resp.equalsIgnoreCase(hack.getKey()) || resp.equalsIgnoreCase("Open GUI");
         } else if (hack.getMode().equalsIgnoreCase("TRANSLATE")) {
             return !resp.toLowerCase().startsWith(hack.getDisplayName().toLowerCase()) && !resp.equalsIgnoreCase(hack.getKey());
         } else if (hack.getMode().equalsIgnoreCase("KEYBIND")) {
             return !resp.equalsIgnoreCase(hack.getKey()) && !(exploitPreventer && resp.equalsIgnoreCase(hack.getKey()));
+        } else if (hack.getMode().equalsIgnoreCase("OPSEC_ARG")) {
+            String rawFormat = hack.getDisplayName();
+            String vanillaExpected = rawFormat.replace("%s", "W");
+            return !resp.equals(vanillaExpected);
         }
         return false;
     }

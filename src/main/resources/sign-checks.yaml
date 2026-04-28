@@ -1,4 +1,9 @@
 hacks:
+  opsec-test:
+    display-name: "check→%s"
+    key: "key.meteor-client.open-gui"
+    mode: "OPSEC_ARG"
+
   meteor-client:
     display-name: "Meteor Client"
     key: "key.meteor-client.open-gui"
