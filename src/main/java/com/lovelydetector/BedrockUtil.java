@@ -32,7 +32,7 @@ public class BedrockUtil {
 
         if (geyserEnabled) {
             try {
-                if (org.geysermc.geyser.api.GeyserApi.api().isBedrockPlayer(uuid)) {
+                if (org.geysermc.geyser.api.GeyserApi.api().connectionByUuid(uuid) != null) {
                     return true;
                 }
             } catch (Exception e) {

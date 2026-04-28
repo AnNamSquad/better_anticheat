@@ -32,6 +32,20 @@ public class ActionManager {
         }
     }
 
+    public void reload() {
+        if (this.banFile.exists()) {
+            this.banConfig = org.bukkit.configuration.file.YamlConfiguration.loadConfiguration(this.banFile);
+            banCache.clear();
+            for (String key : this.banConfig.getKeys(false)) {
+                if (this.banConfig.isInt(key + ".count")) {
+                    try {
+                        banCache.put(java.util.UUID.fromString(key), this.banConfig.getInt(key + ".count"));
+                    } catch (IllegalArgumentException ignored) {}
+                }
+            }
+        }
+    }
+
     public void triggerAction(Player player, String actionName, String checkName) {
         if (actionName == null || actionName.isEmpty()) return;
 

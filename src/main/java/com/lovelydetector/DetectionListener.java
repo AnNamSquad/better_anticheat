@@ -17,6 +17,7 @@ import java.util.List;
 public class DetectionListener extends PacketListenerAbstract {
 
     private final LovelyDetectorPlugin plugin;
+    private final java.util.Set<String> triggeredActions = java.util.concurrent.ConcurrentHashMap.newKeySet();
 
     public DetectionListener(LovelyDetectorPlugin plugin) {
         this.plugin = plugin;
@@ -24,7 +25,10 @@ public class DetectionListener extends PacketListenerAbstract {
 
     @Override
     public void onUserDisconnect(com.github.retrooper.packetevents.event.UserDisconnectEvent event) {
-        // Cleanup handled in ModGUI's PlayerQuitEvent
+        if (event.getUser().getUUID() != null) {
+            String uuidPrefix = event.getUser().getUUID().toString() + ":";
+            triggeredActions.removeIf(key -> key.startsWith(uuidPrefix));
+        }
     }
 
     @Override
@@ -52,7 +56,10 @@ public class DetectionListener extends PacketListenerAbstract {
                     plugin.getModManager().setClientType(player.getUniqueId(), forgeType);
                     FileConfiguration forgeConfig = plugin.getConfigManager().getConfig("forge.yaml");
                     if (forgeConfig.getBoolean("enabled", true)) {
-                        plugin.getActionManager().triggerAction(player, forgeConfig.getString("action"), forgeType);
+                        String action = forgeConfig.getString("action");
+                        if (action != null && triggeredActions.add(player.getUniqueId() + ":" + action)) {
+                            plugin.getActionManager().triggerAction(player, action, forgeType);
+                        }
                     }
                 }
             } else if (channel.equals("minecraft:register") || channel.equals("REGISTER")) {
@@ -81,7 +88,11 @@ public class DetectionListener extends PacketListenerAbstract {
                         List<String> forbidden = forgeConfig.getStringList("forbidden-mods");
                         for (ForgeModInfo mod : forgeMods) {
                             if (forbidden.contains(mod.getModId().toLowerCase())) {
-                                plugin.getActionManager().triggerAction(player, forgeConfig.getString("action"), mod.getModId());
+                                String action = forgeConfig.getString("action");
+                                // Fix Bug 14: Prevent multiple triggers on duplicate Forge packets
+                                if (action != null && triggeredActions.add(player.getUniqueId() + ":" + action)) {
+                                    plugin.getActionManager().triggerAction(player, action, mod.getModId());
+                                }
                             }
                         }
                     }
@@ -98,7 +109,10 @@ public class DetectionListener extends PacketListenerAbstract {
                 }
                 FileConfiguration lunarConfig = plugin.getConfigManager().getConfig("lunar.yaml");
                 if (lunarConfig.getBoolean("enabled", true)) {
-                    plugin.getActionManager().triggerAction(player, lunarConfig.getString("action", "labymod"), "Lunar Client");
+                    String action = lunarConfig.getString("action", "labymod");
+                    if (triggeredActions.add(player.getUniqueId() + ":" + action)) {
+                        plugin.getActionManager().triggerAction(player, action, "Lunar Client");
+                    }
                     if (lunarConfig.getBoolean("block-lunar", false)) {
                         Bukkit.getScheduler().runTask(plugin, () -> player.kickPlayer("Lunar Client is not allowed."));
                     }
@@ -143,7 +157,10 @@ public class DetectionListener extends PacketListenerAbstract {
                     if (forgeConfig.getBoolean("enabled", true)) {
                         List<String> forbidden = forgeConfig.getStringList("forbidden-mods");
                         if (forbidden.contains(modId.toLowerCase())) {
-                            plugin.getActionManager().triggerAction(player, forgeConfig.getString("action"), forgeMod.toString());
+                            String action = forgeConfig.getString("action");
+                            if (action != null && triggeredActions.add(player.getUniqueId() + ":" + action)) {
+                                plugin.getActionManager().triggerAction(player, action, forgeMod.toString());
+                            }
                         }
                     }
                 }
@@ -160,8 +177,10 @@ public class DetectionListener extends PacketListenerAbstract {
                 for (String match : matches) {
                     if (brand.contains(match.toLowerCase())) {
                         String action = genericConfig.getString("brands." + key + ".action");
-                        plugin.getActionManager().triggerAction(player, action, brand);
-                        return;
+                        if (action != null && triggeredActions.add(player.getUniqueId() + ":" + action)) {
+                            plugin.getActionManager().triggerAction(player, action, brand);
+                        }
+                        // Removed return; to allow multiple matches across different clients/mods (Bug 16)
                     }
                 }
             }
@@ -176,8 +195,10 @@ public class DetectionListener extends PacketListenerAbstract {
                 for (String match : matches) {
                     if (channel.contains(match.toLowerCase())) {
                         String action = genericConfig.getString("channels." + key + ".action");
-                        plugin.getActionManager().triggerAction(player, action, channel);
-                        return;
+                        if (action != null && triggeredActions.add(player.getUniqueId() + ":" + action)) {
+                            plugin.getActionManager().triggerAction(player, action, channel);
+                        }
+                        // Removed return; to allow multiple matches across different clients/mods (Bug 16)
                     }
                 }
             }

@@ -9,17 +9,25 @@ import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class ConfigManager {
 
     private final LovelyDetectorPlugin plugin;
-    private final Map<String, FileConfiguration> configs = new HashMap<>();
+    private final Map<String, FileConfiguration> configs = new ConcurrentHashMap<>();
 
     public ConfigManager(LovelyDetectorPlugin plugin) {
         this.plugin = plugin;
     }
 
     public void loadConfigs() {
+        if (plugin.getSignCheckManager() != null) {
+            plugin.getSignCheckManager().cancelAllChecks();
+        }
+        if (plugin.getActionManager() != null) {
+            plugin.getActionManager().reload();
+        }
+        
         String[] files = {"config.yaml", "actions.yaml", "generic.yaml", "lunar.yaml", "forge.yaml", "bedrock.yaml", "languages/vi.yaml", "sign-checks.yaml"};
         for (String fileName : files) {
             File file = new File(plugin.getDataFolder(), fileName);

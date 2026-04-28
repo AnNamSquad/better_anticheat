@@ -22,23 +22,10 @@ public class LunarParser {
         String rawPayload = new String(payload, StandardCharsets.UTF_8);
         Matcher matcher = PRINTABLE_ASCII.matcher(rawPayload);
 
-        // We will just extract anything that looks like a mod string.
-        // It's not a perfect parser like protobuf, but extracts the visible mod ids and versions
-        // In protobuf, strings are clustered.
-        List<String> foundStrings = new ArrayList<>();
-        while (matcher.find()) {
-            foundStrings.add(matcher.group().trim());
-        }
-
-        // Just add everything we find as a 'mod' name since we can't perfectly reconstruct without proto
-        // Filter out obvious lunar built-ins if they clutter
-        for (String str : foundStrings) {
-            // Very rudimentary filtering
-            if (str.length() > 2 && str.matches("^[a-zA-Z0-9_-]+$")) {
-                mods.add(new LunarModInfo(str, str, "unknown", "unknown"));
-            }
-        }
-
+        // We will no longer run the naive heuristic because it matches standard
+        // Apollo protocol fields (like tokens) as false-positive "mods" (Bug 10).
+        // Since we cannot perfectly reconstruct the protobuf, we will rely on channel 
+        // detection instead of string scraping.
         return mods;
     }
 }

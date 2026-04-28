@@ -39,6 +39,12 @@ public class SignCheckManager {
         return activeChecks.containsKey(uuid);
     }
 
+    public void cancelAllChecks() {
+        for (UUID uuid : new ArrayList<>(activeChecks.keySet())) {
+            finishCheck(uuid);
+        }
+    }
+
     public void startCheck(Player target) {
         if (activeChecks.containsKey(target.getUniqueId())) return;
         
@@ -152,7 +158,7 @@ public class SignCheckManager {
         if (hack.getMode().equalsIgnoreCase("KEYBIND")) {
             return Component.keybind(hack.getKey());
         } else if (hack.getMode().equalsIgnoreCase("OPSEC_ARG")) {
-            Component canary = Component.translatable("key.keyboard.w");
+            Component canary = Component.translatable("lovelydetector.canary"); // Fix Bug 18: use a non-existent key to avoid language collisions
             return Component.translatable(hack.getKey(), "check→%s", canary);
         } else {
             return Component.translatable(hack.getKey(), hack.getDisplayName());
@@ -211,7 +217,7 @@ public class SignCheckManager {
             return !resp.equalsIgnoreCase(hack.getKey());
         } else if (hack.getMode().equalsIgnoreCase("OPSEC_ARG")) {
             String rawFormat = "check→%s";
-            String vanillaExpected = rawFormat.replace("%s", "W");
+            String vanillaExpected = rawFormat.replace("%s", "lovelydetector.canary"); // Fix Bug 18
             return !resp.equals(vanillaExpected);
         }
         return false;

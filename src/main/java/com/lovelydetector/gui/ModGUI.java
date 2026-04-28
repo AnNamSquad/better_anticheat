@@ -25,7 +25,7 @@ public class ModGUI implements Listener {
         if (clientType == null || clientType.isEmpty()) clientType = "Unknown";
         clientType = clientType.substring(0, 1).toUpperCase() + clientType.substring(1).toLowerCase();
 
-        Inventory inv = Bukkit.createInventory(null, 54, ChatColor.DARK_BLUE + clientType + "'s users");
+        Inventory inv = Bukkit.createInventory(null, 54, "LovelyDetector - " + ChatColor.DARK_BLUE + clientType + "'s users");
 
         ItemStack item = new ItemStack(Material.BOOK);
         ItemMeta meta = item.getItemMeta();
@@ -59,7 +59,7 @@ public class ModGUI implements Listener {
 
     @EventHandler
     public void onClick(InventoryClickEvent event) {
-        if (event.getView().getTitle().endsWith("'s users")) {
+        if (event.getView().getTitle().startsWith("LovelyDetector - ") && event.getView().getTitle().endsWith("'s users")) {
             event.setCancelled(true);
         }
     }

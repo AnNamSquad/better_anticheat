@@ -55,9 +55,8 @@ public class GlobalGUI implements Listener {
 
                 lore.add(ChatColor.GRAY + "Client: " + ChatColor.AQUA + clientType);
                 
-                int modCount = plugin.getModManager().getMods(target.getUniqueId()).size() +
-                               plugin.getModManager().getForgeMods(target.getUniqueId()).size() +
-                               plugin.getModManager().getLunarMods(target.getUniqueId()).size();
+                // Fix Bug 11: getMods() already includes Forge and Lunar mods due to how ModManager is structured.
+                int modCount = plugin.getModManager().getMods(target.getUniqueId()).size();
                 
                 if (modCount > 0) {
                     lore.add(ChatColor.GRAY + "Detected Mods: " + ChatColor.RED + modCount);
@@ -115,7 +114,12 @@ public class GlobalGUI implements Listener {
             Player viewer = (Player) event.getWhoClicked();
             
             String title = event.getView().getTitle();
-            int currentPage = Integer.parseInt(title.replace("LovelyDetector - Page ", "")) - 1;
+            int currentPage = 0;
+            try {
+                currentPage = Integer.parseInt(title.replace("LovelyDetector - Page ", "")) - 1;
+            } catch (NumberFormatException e) {
+                return; // Fix Bug 12: Prevent crash if title is spoofed or colliding
+            }
 
             if (event.getRawSlot() == NAV_PREV_SLOT && event.getCurrentItem() != null && event.getCurrentItem().getType() == Material.ARROW) {
                 open(viewer, currentPage - 1);
