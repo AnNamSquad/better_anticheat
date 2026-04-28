@@ -4,10 +4,6 @@
 #   matches: [list of substrings to match]
 
 brands:
-  vape:
-    action: vape
-    matches:
-      - "vape"
   labymod:
     action: labymod
     matches:
@@ -67,10 +63,7 @@ channels:
     action: generic_mod
     matches:
       - "wecui"
-  "Vape":
-    action: vape
-    matches:
-      - "lolimahcker"
+
   "ExampleClient":
     action: generic_mod
     matches:

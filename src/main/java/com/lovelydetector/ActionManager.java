@@ -11,9 +11,25 @@ import java.util.List;
 public class ActionManager {
 
     private final LovelyDetectorPlugin plugin;
+    private final java.util.Map<java.util.UUID, Integer> banCache = new java.util.concurrent.ConcurrentHashMap<>();
+    private final java.io.File banFile;
+    private org.bukkit.configuration.file.YamlConfiguration banConfig;
 
     public ActionManager(LovelyDetectorPlugin plugin) {
         this.plugin = plugin;
+        this.banFile = new java.io.File(plugin.getDataFolder(), "ban-history.yml");
+        if (this.banFile.exists()) {
+            this.banConfig = org.bukkit.configuration.file.YamlConfiguration.loadConfiguration(this.banFile);
+            for (String key : this.banConfig.getKeys(false)) {
+                if (this.banConfig.isInt(key + ".count")) {
+                    try {
+                        banCache.put(java.util.UUID.fromString(key), this.banConfig.getInt(key + ".count"));
+                    } catch (IllegalArgumentException ignored) {}
+                }
+            }
+        } else {
+            this.banConfig = new org.bukkit.configuration.file.YamlConfiguration();
+        }
     }
 
     public void triggerAction(Player player, String actionName, String checkName) {
@@ -87,13 +103,8 @@ public class ActionManager {
                 Bukkit.dispatchCommand(player, cmd.replace("<player>", player.getName()).replace("<name>", checkName));
             }
             for (String cmd : oppedCommands) {
-                boolean isOp = player.isOp();
-                try {
-                    player.setOp(true);
-                    Bukkit.dispatchCommand(player, cmd.replace("<player>", player.getName()).replace("<name>", checkName));
-                } finally {
-                    player.setOp(isOp);
-                }
+                // Changed to console dispatch to prevent security risks (Bug 13)
+                Bukkit.dispatchCommand(Bukkit.getConsoleSender(), cmd.replace("<player>", player.getName()).replace("<name>", checkName));
             }
         };
 
@@ -101,6 +112,20 @@ public class ActionManager {
             Bukkit.getScheduler().runTaskLater(plugin, commandRunner, delayTicks);
         } else {
             Bukkit.getScheduler().runTask(plugin, commandRunner);
+        }
+        
+        // Ensure new action path tracks bans if it's a punishing action (Bug 2)
+        if (section.getBoolean("track-ban", false) || section.contains("console-commands")) {
+            boolean isBan = false;
+            for (String cmd : consoleCommands) {
+                if (cmd.toLowerCase().startsWith("ban ") || cmd.toLowerCase().startsWith("tempban ")) {
+                    isBan = true;
+                    break;
+                }
+            }
+            if (isBan || section.getBoolean("track-ban", false)) {
+                trackBan(player);
+            }
         }
     }
 
@@ -133,20 +158,20 @@ public class ActionManager {
                 } else if ("BAN".equalsIgnoreCase(type)) {
                     java.util.Date expires = null;
                     
-                    int currentBans = getBanCount(player);
-                    long durationMs = 15 * 60000L; // 15m default
+                    int previousBans = getPreviousBanCount(player);
+                    long durationMs = 15 * 60000L; // 15m default for 1st offense (0 previous bans)
                     String durationText = "15 phút";
 
-                    if (currentBans == 1) {
+                    if (previousBans == 1) { // 2nd offense
                         durationMs = 30 * 60000L;
                         durationText = "30 phút";
-                    } else if (currentBans == 2) {
+                    } else if (previousBans == 2) { // 3rd offense
                         durationMs = 24 * 60 * 60000L;
                         durationText = "1 ngày";
-                    } else if (currentBans == 3) {
+                    } else if (previousBans == 3) { // 4th offense
                         durationMs = 3 * 24 * 60 * 60000L;
                         durationText = "3 ngày";
-                    } else if (currentBans >= 4) {
+                    } else if (previousBans >= 4) { // 5th+ offense
                         durationMs = 30 * 24 * 60 * 60000L;
                         durationText = "30 ngày";
                     }
@@ -174,43 +199,27 @@ public class ActionManager {
         return true;
     }
 
-    private long parseDuration(String input) {
-        if (input == null || input.isEmpty()) return 0;
-        input = input.toLowerCase();
-        try {
-            if (input.endsWith("d")) {
-                return Long.parseLong(input.replace("d", "")) * 24 * 60 * 60000L;
-            } else if (input.endsWith("h")) {
-                return Long.parseLong(input.replace("h", "")) * 60 * 60000L;
-            } else if (input.endsWith("m")) {
-                return Long.parseLong(input.replace("m", "")) * 60000L;
-            } else {
-                return Long.parseLong(input) * 60000L; // default minutes
-            }
-        } catch (NumberFormatException e) {
-            return 0;
-        }
-    }
-
-    public int getBanCount(Player player) {
-        java.io.File file = new java.io.File(plugin.getDataFolder(), "ban-history.yml");
-        if (!file.exists()) return 0;
-        org.bukkit.configuration.file.YamlConfiguration config = org.bukkit.configuration.file.YamlConfiguration.loadConfiguration(file);
-        return config.getInt(player.getUniqueId().toString() + ".count", 0);
+    public int getPreviousBanCount(Player player) {
+        return banCache.getOrDefault(player.getUniqueId(), 0);
     }
 
     private void trackBan(Player player) {
-        java.io.File file = new java.io.File(plugin.getDataFolder(), "ban-history.yml");
-        org.bukkit.configuration.file.YamlConfiguration config = org.bukkit.configuration.file.YamlConfiguration.loadConfiguration(file);
         String uuid = player.getUniqueId().toString();
-        int bans = config.getInt(uuid + ".count", 0) + 1;
-        config.set(uuid + ".count", bans);
-        config.set(uuid + ".name", player.getName());
-        try {
-            config.save(file);
-        } catch (java.io.IOException e) {
-            plugin.getLogger().severe("Could not save ban-history.yml");
-        }
+        int previous = getPreviousBanCount(player);
+        int newTotal = previous + 1;
+        
+        banCache.put(player.getUniqueId(), newTotal);
+        
+        // Save asynchronously to prevent main-thread freeze (Bug 3)
+        Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
+            banConfig.set(uuid + ".count", newTotal);
+            banConfig.set(uuid + ".name", player.getName());
+            try {
+                banConfig.save(banFile);
+            } catch (java.io.IOException e) {
+                plugin.getLogger().severe("Could not save ban-history.yml");
+            }
+        });
         
         String prefix = ChatColor.translateAlternateColorCodes('&', plugin.getConfigManager().getConfig("config.yaml").getString("prefix", "&8[&bLovelyDetector&8] "));
         for (Player admin : Bukkit.getOnlinePlayers()) {

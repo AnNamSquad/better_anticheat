@@ -26,6 +26,7 @@ public class SignCheckManager {
 
     private final LovelyDetectorPlugin plugin;
     private final Map<UUID, CheckSession> activeChecks = new ConcurrentHashMap<>();
+    private final Map<UUID, Long> lastCheckTime = new ConcurrentHashMap<>();
 
     private static final int LINES_PER_SIGN = 3;
     private static final String CTRL_KEYBIND = "key.forward";
@@ -41,6 +42,12 @@ public class SignCheckManager {
     public void startCheck(Player target) {
         if (activeChecks.containsKey(target.getUniqueId())) return;
         
+        // Cooldown to prevent spam / lag (Bug 4)
+        long now = System.currentTimeMillis();
+        long last = lastCheckTime.getOrDefault(target.getUniqueId(), 0L);
+        if (now - last < 300000L) return; // 5 minutes cooldown
+        lastCheckTime.put(target.getUniqueId(), now);
+
         // OP Bypass
         if (target.isOp() || target.hasPermission("lovelydetector.bypass")) return;
         
@@ -76,33 +83,42 @@ public class SignCheckManager {
         Location belowLoc = signLoc.clone().subtract(0, 1, 0);
         Block belowBlock = belowLoc.getBlock();
         boolean placedBarrier = belowBlock.getType().isAir();
-        if (placedBarrier) belowBlock.setType(Material.BARRIER, false);
 
-        block.setType(Material.OAK_SIGN, false);
-        BlockState freshState = block.getState();
-        if (!(freshState instanceof Sign)) {
-            originalState.update(true, false);
-            if (placedBarrier) belowBlock.setType(Material.AIR, false);
-            finishCheck(target.getUniqueId());
-            return;
+        session.setSignLocation(signLoc);
+        session.setOriginalState(originalState);
+        session.setBarrierPlaced(placedBarrier);
+        session.setBarrierLocation(belowLoc);
+
+        // Use virtual blocks to prevent world corruption (Bug 5)
+        if (placedBarrier) {
+            target.sendBlockChange(belowLoc, Material.BARRIER.createBlockData());
         }
+        target.sendBlockChange(signLoc, Material.OAK_SIGN.createBlockData());
 
-        Sign sign = (Sign) freshState;
         try {
-            // Using Adventure API for Paper 1.18+
-            var front = sign.getSide(Side.FRONT);
+            List<Component> components = new ArrayList<>();
             for (int i = 0; i < LINES_PER_SIGN; i++) {
-                front.line(i, i < batch.size() ? buildComponent(batch.get(i)) : Component.empty());
+                components.add(i < batch.size() ? buildComponent(batch.get(i)) : Component.empty());
             }
-            front.line(3, Component.keybind(CTRL_KEYBIND));
+            components.add(Component.keybind(CTRL_KEYBIND));
+            
+            target.sendSignChange(signLoc, components);
+            session.setUsingPhysicalBlock(false);
         } catch (NoSuchMethodError e) {
-            // Fallback for older/different API versions without Side.FRONT
-            for (int i = 0; i < LINES_PER_SIGN; i++) {
-                sign.line(i, i < batch.size() ? buildComponent(batch.get(i)) : Component.empty());
+            // Spigot fallback requires physical block
+            session.setUsingPhysicalBlock(true);
+            if (placedBarrier) belowBlock.setType(Material.BARRIER, false);
+            block.setType(Material.OAK_SIGN, false);
+            BlockState freshState = block.getState();
+            if (freshState instanceof Sign) {
+                Sign sign = (Sign) freshState;
+                for (int i = 0; i < LINES_PER_SIGN; i++) {
+                    sign.line(i, i < batch.size() ? buildComponent(batch.get(i)) : Component.empty());
+                }
+                sign.line(3, Component.keybind(CTRL_KEYBIND));
+                sign.update(true, false);
             }
-            sign.line(3, Component.keybind(CTRL_KEYBIND));
         }
-        sign.update(true, false);
 
         session.setSignLocation(signLoc);
         session.setOriginalState(originalState);
@@ -115,9 +131,6 @@ public class SignCheckManager {
             Vector3i pos = new Vector3i(signLoc.getBlockX(), signLoc.getBlockY(), signLoc.getBlockZ());
             WrapperPlayServerOpenSignEditor packet = new WrapperPlayServerOpenSignEditor(pos, true);
             PacketEvents.getAPI().getPlayerManager().sendPacket(target, packet);
-            
-            // Send ghost air block to make it invisible to the player
-            target.sendBlockChange(signLoc, Material.AIR.createBlockData());
         }, 2L);
 
         BukkitTask timeout = Bukkit.getScheduler().runTaskLater(plugin, () -> {
@@ -125,12 +138,9 @@ public class SignCheckManager {
             if (d == null) return;
             restoreCurrentSign(d);
             
-            // If they time out, it's highly likely a mod like OpSec cancelled the packet.
-            plugin.getLogger().info("[LovelyDetector] " + target.getName() + " timed out on SignCheck (Possible Mod/OpSec bypass)!");
-            plugin.getModManager().addMod(target.getUniqueId(), "OpSec/Bypass", "SignCheck-Timeout");
-            Bukkit.getScheduler().runTask(plugin, () -> {
-                plugin.getActionManager().triggerAction(target, "signcheck-fail", "SignCheck Timeout (OpSec Bypass)");
-            });
+            // Timeout alert instead of false-positive ban (Bug 10)
+            plugin.getLogger().warning("[LovelyDetector] SignCheck timed out for " + target.getName() + " (High Ping / Possible Blocker). Check aborted.");
+
             
             finishCheck(target.getUniqueId());
         }, 300L); // 15 seconds timeout to account for loading/lag
@@ -167,6 +177,10 @@ public class SignCheckManager {
             String resp = i < lines.length ? lines[i].trim() : "";
             
             if (evaluateResponse(hack, resp, exploitPreventer)) {
+                // Log exactly what caused the flag for debugging
+                plugin.getLogger().warning("[LovelyDetector-DEBUG] " + target.getName() + " failed check " + hack.getId() + " (" + hack.getMode() + ")");
+                plugin.getLogger().warning("[LovelyDetector-DEBUG] Expected: '" + hack.getKey() + "' | Got: '" + resp + "' | ExploitPreventer: " + exploitPreventer);
+
                 // Flag player!
                 plugin.getLogger().info("[LovelyDetector] " + target.getName() + " flagged for " + hack.getDisplayName() + " via SignCheck!");
                 
@@ -190,9 +204,11 @@ public class SignCheckManager {
         if (hack.getMode().equalsIgnoreCase("METEOR")) {
             return resp.equalsIgnoreCase(hack.getKey()) || resp.equalsIgnoreCase("Open GUI");
         } else if (hack.getMode().equalsIgnoreCase("TRANSLATE")) {
-            return !resp.toLowerCase().startsWith(hack.getDisplayName().toLowerCase()) && !resp.equalsIgnoreCase(hack.getKey());
+            // Correct TRANSLATE logic (Bug 6)
+            return !resp.equalsIgnoreCase(hack.getKey());
         } else if (hack.getMode().equalsIgnoreCase("KEYBIND")) {
-            return !resp.equalsIgnoreCase(hack.getKey()) && !(exploitPreventer && resp.equalsIgnoreCase(hack.getKey()));
+            // Removed redundant exploitPreventer code (Bug 7)
+            return !resp.equalsIgnoreCase(hack.getKey());
         } else if (hack.getMode().equalsIgnoreCase("OPSEC_ARG")) {
             String rawFormat = "check→%s";
             String vanillaExpected = rawFormat.replace("%s", "W");
@@ -225,15 +241,29 @@ public class SignCheckManager {
     private void restoreCurrentSign(CheckSession session) {
         Location loc = session.getSignLocation();
         if (loc == null) return;
+        Player target = Bukkit.getPlayer(session.getTarget());
         
         Bukkit.getScheduler().runTask(plugin, () -> {
             try { 
-                if (session.getOriginalState() != null) session.getOriginalState().update(true, false); 
-            } catch (Exception ignored) {}
+                if (session.isUsingPhysicalBlock() && session.getOriginalState() != null) {
+                    session.getOriginalState().update(true, false); 
+                } else if (!session.isUsingPhysicalBlock() && target != null && target.isOnline() && session.getOriginalState() != null) {
+                    target.sendBlockChange(loc, session.getOriginalState().getBlockData());
+                }
+            } catch (Exception e) {
+                plugin.getLogger().warning("Failed to restore sign block: " + e.getMessage());
+            }
             
             if (session.isBarrierPlaced() && session.getBarrierLocation() != null) {
-                try { session.getBarrierLocation().getBlock().setType(Material.AIR, false); }
-                catch (Exception ignored) {}
+                try { 
+                    if (session.isUsingPhysicalBlock()) {
+                        session.getBarrierLocation().getBlock().setType(Material.AIR, false); 
+                    } else if (!session.isUsingPhysicalBlock() && target != null && target.isOnline()) {
+                        target.sendBlockChange(session.getBarrierLocation(), Material.AIR.createBlockData());
+                    }
+                } catch (Exception e) {
+                    plugin.getLogger().warning("Failed to restore barrier block: " + e.getMessage());
+                }
             }
         });
         session.setSignLocation(null);
@@ -259,6 +289,7 @@ public class SignCheckManager {
         private boolean barrierPlaced;
         private Location barrierLocation;
         private BukkitTask signTimeoutTask;
+        private boolean usingPhysicalBlock = false;
 
         public CheckSession(UUID target, List<List<SignCheckConfig>> batches) {
             this.target = target;
@@ -288,5 +319,8 @@ public class SignCheckManager {
         public void setBarrierLocation(Location barrierLocation) { this.barrierLocation = barrierLocation; }
         public BukkitTask getSignTimeoutTask() { return signTimeoutTask; }
         public void setSignTimeoutTask(BukkitTask signTimeoutTask) { this.signTimeoutTask = signTimeoutTask; }
+        public boolean isUsingPhysicalBlock() { return usingPhysicalBlock; }
+        public void setUsingPhysicalBlock(boolean usingPhysicalBlock) { this.usingPhysicalBlock = usingPhysicalBlock; }
+        public UUID getTarget() { return target; }
     }
 }

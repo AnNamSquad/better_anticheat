@@ -67,11 +67,9 @@ public class DetectionListener extends PacketListenerAbstract {
                     String currentType = plugin.getModManager().getClientType(player.getUniqueId());
                     if (lowerChannel.contains("fabric") && currentType.equalsIgnoreCase("Vanilla")) {
                         plugin.getModManager().setClientType(player.getUniqueId(), "fabric");
-                        checkBrand(player, "fabric");
                     }
                     if (lowerChannel.contains("meteor")) {
                         plugin.getModManager().setClientType(player.getUniqueId(), "meteor");
-                        checkBrand(player, "meteor");
                     }
                 }
                 
@@ -135,7 +133,8 @@ public class DetectionListener extends PacketListenerAbstract {
             for (int i = 0; i < parts.length - 1; i++) {
                 String modId = parts[i];
                 String version = parts[i + 1];
-                if (modId.length() > 2 && version.length() > 0 && Character.isDigit(version.charAt(0))) {
+                // Strict regex to prevent garbage binary data from being parsed as mods (Bug 11)
+                if (modId.length() > 2 && modId.matches("^[a-z0-9_-]+$") && version.matches("^[0-9]+[a-zA-Z0-9_.-]*$")) {
                     plugin.getModManager().addMod(player.getUniqueId(), modId, version);
                     ForgeModInfo forgeMod = new ForgeModInfo(modId, version);
                     plugin.getModManager().addForgeMods(player.getUniqueId(), List.of(forgeMod));
