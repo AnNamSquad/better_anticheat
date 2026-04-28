@@ -132,17 +132,37 @@ public class ActionManager {
                     player.kickPlayer(message);
                 } else if ("BAN".equalsIgnoreCase(type)) {
                     java.util.Date expires = null;
-                    if (actionData.containsKey("duration")) {
-                        long durationMs = parseDuration(actionData.get("duration").toString());
-                        if (durationMs > 0) {
-                            expires = new java.util.Date(System.currentTimeMillis() + durationMs);
-                        } else {
-                            plugin.getLogger().warning("Invalid ban duration: " + actionData.get("duration"));
-                        }
+                    
+                    int currentBans = getBanCount(player);
+                    long durationMs = 15 * 60000L; // 15m default
+                    String durationText = "15 phút";
+
+                    if (currentBans == 1) {
+                        durationMs = 30 * 60000L;
+                        durationText = "30 phút";
+                    } else if (currentBans == 2) {
+                        durationMs = 24 * 60 * 60000L;
+                        durationText = "1 ngày";
+                    } else if (currentBans == 3) {
+                        durationMs = 3 * 24 * 60 * 60000L;
+                        durationText = "3 ngày";
+                    } else if (currentBans >= 4) {
+                        durationMs = 30 * 24 * 60 * 60000L;
+                        durationText = "30 ngày";
                     }
-                    Bukkit.getBanList(org.bukkit.BanList.Type.NAME).addBan(player.getName(), message, expires, "LovelyDetector");
+
+                    if (durationMs > 0) {
+                        expires = new java.util.Date(System.currentTimeMillis() + durationMs);
+                    }
+                    
+                    String finalMessage = message;
+                    if (finalMessage != null) {
+                        finalMessage = finalMessage.replace("15 phút", durationText);
+                    }
+                    
+                    Bukkit.getBanList(org.bukkit.BanList.Type.NAME).addBan(player.getName(), finalMessage, expires, "LovelyDetector");
                     trackBan(player);
-                    player.kickPlayer(message);
+                    player.kickPlayer(finalMessage);
                 } else if ("COMMAND".equalsIgnoreCase(type)) {
                     String cmd = (String) actionData.get("command");
                     if (cmd != null) {
@@ -170,6 +190,13 @@ public class ActionManager {
         } catch (NumberFormatException e) {
             return 0;
         }
+    }
+
+    public int getBanCount(Player player) {
+        java.io.File file = new java.io.File(plugin.getDataFolder(), "ban-history.yml");
+        if (!file.exists()) return 0;
+        org.bukkit.configuration.file.YamlConfiguration config = org.bukkit.configuration.file.YamlConfiguration.loadConfiguration(file);
+        return config.getInt(player.getUniqueId().toString() + ".count", 0);
     }
 
     private void trackBan(Player player) {

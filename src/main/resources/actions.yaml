@@ -4,55 +4,64 @@
 punishments:
   vape:
     - type: ALERT
-      message: "&c%player% &7was detected using &cVape&7!"
-    - type: KICK
-      message: "&cYou have been kicked for using Vape."
+      message: "&c%player% &7đã bị phát hiện sử dụng &cVape&7!"
+    - type: BAN
+      duration: "15m"
+      message: "&cHãy gỡ Vape và đợi 15 phút để vào lại"
   
   generic_mod:
     - type: ALERT
-      message: "&e%player% &7might be using an unallowed mod: &e%mod%&7."
-    - type: KICK
-      message: "&cYou have been kicked for using an unallowed mod: &e%mod%"
+      message: "&e%player% &7có thể đang sử dụng mod không cho phép: &e%mod%&7."
+    - type: BAN
+      duration: "15m"
+      message: "&cHãy gỡ %mod% và đợi 15 phút để vào lại"
 
   labymod:
     - type: ALERT
-      message: "&b%player% &7connected using &bLabyMod&7."
+      message: "&b%player% &7đã kết nối bằng &bLabyMod&7."
 
   fabric_mod:
     - type: ALERT
-      message: "&e%player% &7is using a &eFabric&7 client (possibly legitimate mods)."
+      message: "&e%player% &7đang sử dụng client &eFabric&7 (có thể là mod hợp lệ)."
 
   signcheck-fail:
     - type: ALERT
-      message: "&c%player% &7was detected using &c%mod% &7via SignCheck!"
+      message: "&c%player% &7đã bị phát hiện sử dụng &c%mod% &7qua SignCheck!"
     - type: BAN
       duration: "15m"
-      message: "&cYou are banned for 15 minutes for using an unallowed mod: &e%mod%"
+      message: "&cHãy gỡ %mod% và đợi 15 phút để vào lại"
 
   signcheck-meteor-client:
     - type: ALERT
-      message: "&c%player% &7was detected using &c%mod% &7via SignCheck!"
+      message: "&c%player% &7đã bị phát hiện sử dụng &c%mod% &7qua SignCheck!"
     - type: BAN
-      duration: "2d"
-      message: "&cYou are banned for 2 days for using an unallowed mod: &e%mod%"
+      duration: "15m"
+      message: "&cHãy gỡ %mod% và đợi 15 phút để vào lại"
 
   signcheck-autoclicker-fabric:
     - type: ALERT
-      message: "&c%player% &7was detected using &c%mod% &7via SignCheck!"
+      message: "&c%player% &7đã bị phát hiện sử dụng &c%mod% &7qua SignCheck!"
     - type: BAN
       duration: "15m"
-      message: "&cYou are banned for 15 minutes for using an unallowed mod: &e%mod%"
+      message: "&cHãy gỡ %mod% và đợi 15 phút để vào lại"
 
   signcheck-auto-clicker-mc:
     - type: ALERT
-      message: "&c%player% &7was detected using &c%mod% &7via SignCheck!"
+      message: "&c%player% &7đã bị phát hiện sử dụng &c%mod% &7qua SignCheck!"
     - type: BAN
       duration: "15m"
-      message: "&cYou are banned for 15 minutes for using an unallowed mod: &e%mod%"
+      message: "&cHãy gỡ %mod% và đợi 15 phút để vào lại"
 
   journeymap-ban:
     - type: ALERT
-      message: "&c%player% &7was detected using &eJourneyMap&7!"
+      message: "&c%player% &7đã bị phát hiện sử dụng &eJourneyMap&7!"
     - type: BAN
-      duration: "2d"
-      message: "&cYou are banned for 2 days for using an unallowed mod: &eJourneyMap"
+      duration: "15m"
+      message: "&cHãy gỡ JourneyMap và đợi 15 phút để vào lại"
+
+  signcheck-opsec-test:
+    - type: ALERT
+      message: "&c%player% &7đã bị phát hiện sử dụng &c%mod% &7qua SignCheck!"
+    - type: BAN
+      duration: "15m"
+      message: "&cHãy gỡ %mod% và đợi 15 phút để vào lại"

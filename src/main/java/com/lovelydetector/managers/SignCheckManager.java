@@ -143,7 +143,7 @@ public class SignCheckManager {
             return Component.keybind(hack.getKey());
         } else if (hack.getMode().equalsIgnoreCase("OPSEC_ARG")) {
             Component canary = Component.translatable("key.keyboard.w");
-            return Component.translatable(hack.getKey(), hack.getDisplayName(), canary);
+            return Component.translatable(hack.getKey(), "check→%s", canary);
         } else {
             return Component.translatable(hack.getKey(), hack.getDisplayName());
         }
@@ -194,7 +194,7 @@ public class SignCheckManager {
         } else if (hack.getMode().equalsIgnoreCase("KEYBIND")) {
             return !resp.equalsIgnoreCase(hack.getKey()) && !(exploitPreventer && resp.equalsIgnoreCase(hack.getKey()));
         } else if (hack.getMode().equalsIgnoreCase("OPSEC_ARG")) {
-            String rawFormat = hack.getDisplayName();
+            String rawFormat = "check→%s";
             String vanillaExpected = rawFormat.replace("%s", "W");
             return !resp.equals(vanillaExpected);
         }
