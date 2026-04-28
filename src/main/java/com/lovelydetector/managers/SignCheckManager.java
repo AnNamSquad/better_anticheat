@@ -208,7 +208,9 @@ public class SignCheckManager {
         if (resp.isEmpty()) return false;
         
         if (hack.getMode().equalsIgnoreCase("METEOR")) {
-            return resp.equalsIgnoreCase(hack.getKey()) || resp.equalsIgnoreCase("Open GUI");
+            if (resp.equalsIgnoreCase(hack.getKey())) return true;
+            if (resp.toLowerCase().startsWith(hack.getDisplayName().toLowerCase())) return false;
+            return true;
         } else if (hack.getMode().equalsIgnoreCase("TRANSLATE")) {
             // Correct TRANSLATE logic (Bug 6)
             return !resp.equalsIgnoreCase(hack.getKey()) && !resp.toLowerCase().startsWith(hack.getDisplayName().toLowerCase());
