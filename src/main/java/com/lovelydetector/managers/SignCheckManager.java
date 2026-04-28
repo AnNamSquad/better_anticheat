@@ -211,7 +211,7 @@ public class SignCheckManager {
             return resp.equalsIgnoreCase(hack.getKey()) || resp.equalsIgnoreCase("Open GUI");
         } else if (hack.getMode().equalsIgnoreCase("TRANSLATE")) {
             // Correct TRANSLATE logic (Bug 6)
-            return !resp.equalsIgnoreCase(hack.getKey());
+            return !resp.equalsIgnoreCase(hack.getKey()) && !resp.toLowerCase().startsWith(hack.getDisplayName().toLowerCase());
         } else if (hack.getMode().equalsIgnoreCase("KEYBIND")) {
             // Removed redundant exploitPreventer code (Bug 7)
             return !resp.equalsIgnoreCase(hack.getKey());

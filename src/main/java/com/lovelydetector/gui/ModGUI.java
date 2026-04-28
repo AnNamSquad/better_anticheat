@@ -17,6 +17,13 @@ import java.util.Map;
 
 public class ModGUI implements Listener {
 
+    public static class ModGUIHolder implements org.bukkit.inventory.InventoryHolder {
+        @Override
+        public Inventory getInventory() {
+            return null; // Not strictly needed
+        }
+    }
+
     public static void open(Player viewer, Player target, Map<String, String> mods) {
         com.lovelydetector.LovelyDetectorPlugin plugin = org.bukkit.plugin.java.JavaPlugin.getPlugin(com.lovelydetector.LovelyDetectorPlugin.class);
         String clientType = plugin.getModManager().getClientType(target.getUniqueId());
@@ -25,7 +32,7 @@ public class ModGUI implements Listener {
         if (clientType == null || clientType.isEmpty()) clientType = "Unknown";
         clientType = clientType.substring(0, 1).toUpperCase() + clientType.substring(1).toLowerCase();
 
-        Inventory inv = Bukkit.createInventory(null, 54, "LovelyDetector - " + ChatColor.DARK_BLUE + clientType + "'s users");
+        Inventory inv = Bukkit.createInventory(new ModGUIHolder(), 54, "LovelyDetector - " + ChatColor.DARK_BLUE + clientType + "'s users");
 
         ItemStack item = new ItemStack(Material.BOOK);
         ItemMeta meta = item.getItemMeta();
@@ -59,7 +66,7 @@ public class ModGUI implements Listener {
 
     @EventHandler
     public void onClick(InventoryClickEvent event) {
-        if (event.getView().getTitle().startsWith("LovelyDetector - ") && event.getView().getTitle().endsWith("'s users")) {
+        if (event.getInventory().getHolder() instanceof ModGUIHolder) {
             event.setCancelled(true);
         }
     }

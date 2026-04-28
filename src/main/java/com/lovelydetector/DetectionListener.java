@@ -31,6 +31,10 @@ public class DetectionListener extends PacketListenerAbstract {
         }
     }
 
+    public void clearTriggeredActions() {
+        triggeredActions.clear();
+    }
+
     @Override
     public void onPacketReceive(PacketReceiveEvent event) {
         if (event.getPacketType() == PacketType.Play.Client.PLUGIN_MESSAGE) {
@@ -180,7 +184,7 @@ public class DetectionListener extends PacketListenerAbstract {
                         if (action != null && triggeredActions.add(player.getUniqueId() + ":" + action)) {
                             plugin.getActionManager().triggerAction(player, action, brand);
                         }
-                        // Removed return; to allow multiple matches across different clients/mods (Bug 16)
+                        break; // Deduplicate within same rule group (Bug 16)
                     }
                 }
             }
@@ -198,7 +202,7 @@ public class DetectionListener extends PacketListenerAbstract {
                         if (action != null && triggeredActions.add(player.getUniqueId() + ":" + action)) {
                             plugin.getActionManager().triggerAction(player, action, channel);
                         }
-                        // Removed return; to allow multiple matches across different clients/mods (Bug 16)
+                        break; // Deduplicate within same rule group (Bug 16)
                     }
                 }
             }

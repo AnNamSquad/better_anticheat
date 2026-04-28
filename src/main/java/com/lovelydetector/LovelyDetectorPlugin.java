@@ -13,6 +13,7 @@ public class LovelyDetectorPlugin extends JavaPlugin {
     private BedrockUtil bedrockUtil;
     private ModManager modManager;
     private com.lovelydetector.managers.SignCheckManager signCheckManager;
+    private DetectionListener detectionListener;
 
     @Override
     public void onLoad() {
@@ -34,7 +35,8 @@ public class LovelyDetectorPlugin extends JavaPlugin {
         this.signCheckManager = new com.lovelydetector.managers.SignCheckManager(this);
 
         PacketEvents.getAPI().init();
-        PacketEvents.getAPI().getEventManager().registerListener(new DetectionListener(this));
+        this.detectionListener = new DetectionListener(this);
+        PacketEvents.getAPI().getEventManager().registerListener(this.detectionListener);
 
         getServer().getPluginManager().registerEvents(new com.lovelydetector.gui.ModGUI(), this);
         getServer().getPluginManager().registerEvents(new com.lovelydetector.gui.GlobalGUI(), this);
@@ -79,5 +81,9 @@ public class LovelyDetectorPlugin extends JavaPlugin {
 
     public com.lovelydetector.managers.SignCheckManager getSignCheckManager() {
         return signCheckManager;
+    }
+
+    public DetectionListener getDetectionListener() {
+        return detectionListener;
     }
 }

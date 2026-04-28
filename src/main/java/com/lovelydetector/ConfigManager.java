@@ -27,6 +27,9 @@ public class ConfigManager {
         if (plugin.getActionManager() != null) {
             plugin.getActionManager().reload();
         }
+        if (plugin.getDetectionListener() != null) {
+            plugin.getDetectionListener().clearTriggeredActions();
+        }
         
         String[] files = {"config.yaml", "actions.yaml", "generic.yaml", "lunar.yaml", "forge.yaml", "bedrock.yaml", "languages/vi.yaml", "sign-checks.yaml"};
         for (String fileName : files) {

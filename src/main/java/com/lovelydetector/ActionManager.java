@@ -129,17 +129,54 @@ public class ActionManager {
         }
         
         // Ensure new action path tracks bans if it's a punishing action (Bug 2)
-        if (section.getBoolean("track-ban", false) || section.contains("console-commands")) {
-            boolean isBan = false;
-            for (String cmd : consoleCommands) {
-                if (cmd.toLowerCase().startsWith("ban ") || cmd.toLowerCase().startsWith("tempban ")) {
-                    isBan = true;
-                    break;
-                }
+        boolean hasBanCommand = false;
+        for (String cmd : consoleCommands) {
+            if (cmd.toLowerCase().startsWith("ban ") || cmd.toLowerCase().startsWith("tempban ")) {
+                hasBanCommand = true;
+                break;
             }
-            if (isBan || section.getBoolean("track-ban", false)) {
-                trackBan(player);
+        }
+        
+        String type = section.getString("type");
+        if (hasBanCommand || section.getBoolean("track-ban", false) || "BAN".equalsIgnoreCase(type)) {
+            trackBan(player);
+        }
+
+        if ("BAN".equalsIgnoreCase(type)) {
+            String message = section.getString("message", "&cYou have been banned.");
+            message = ChatColor.translateAlternateColorCodes('&', message
+                    .replace("<player>", player.getName())
+                    .replace("<name>", checkName));
+            
+            String durationStr = section.getString("duration", "15m");
+            long baseDuration = parseDuration(durationStr);
+            
+            int previousBans = getPreviousBanCount(player);
+            // Default multiplier: 1st offense = base, 2nd = base*2, 3rd = 1 day or base*24, 4th+ = 30 days
+            long durationMs = baseDuration;
+            String durationText = durationStr;
+            
+            if (previousBans == 1) {
+                durationMs = baseDuration * 2;
+                durationText = durationStr + " (x2)";
+            } else if (previousBans == 2) {
+                durationMs = Math.max(baseDuration * 4, 24 * 60 * 60000L); // at least 1 day
+                durationText = "1 ngày";
+            } else if (previousBans == 3) {
+                durationMs = Math.max(baseDuration * 10, 3 * 24 * 60 * 60000L); // at least 3 days
+                durationText = "3 ngày";
+            } else if (previousBans >= 4) {
+                durationMs = 30 * 24 * 60 * 60000L;
+                durationText = "30 ngày";
             }
+            
+            java.util.Date expires = durationMs > 0 ? new java.util.Date(System.currentTimeMillis() + durationMs) : null;
+            String finalMessage = message.replace("15 phút", durationText).replace(durationStr, durationText);
+            
+            Bukkit.getScheduler().runTask(plugin, () -> {
+                Bukkit.getBanList(org.bukkit.BanList.Type.NAME).addBan(player.getName(), finalMessage, expires, "LovelyDetector");
+                player.kickPlayer(finalMessage);
+            });
         }
     }
 
@@ -173,17 +210,21 @@ public class ActionManager {
                     java.util.Date expires = null;
                     
                     int previousBans = getPreviousBanCount(player);
-                    long durationMs = 15 * 60000L; // 15m default for 1st offense (0 previous bans)
-                    String durationText = "15 phút";
+                    String durationStr = (String) actionData.get("duration");
+                    if (durationStr == null) durationStr = "15m";
+                    
+                    long baseDuration = parseDuration(durationStr);
+                    long durationMs = baseDuration;
+                    String durationText = durationStr;
 
                     if (previousBans == 1) { // 2nd offense
-                        durationMs = 30 * 60000L;
-                        durationText = "30 phút";
+                        durationMs = baseDuration * 2;
+                        durationText = durationStr + " (x2)";
                     } else if (previousBans == 2) { // 3rd offense
-                        durationMs = 24 * 60 * 60000L;
+                        durationMs = Math.max(baseDuration * 4, 24 * 60 * 60000L);
                         durationText = "1 ngày";
                     } else if (previousBans == 3) { // 4th offense
-                        durationMs = 3 * 24 * 60 * 60000L;
+                        durationMs = Math.max(baseDuration * 10, 3 * 24 * 60 * 60000L);
                         durationText = "3 ngày";
                     } else if (previousBans >= 4) { // 5th+ offense
                         durationMs = 30 * 24 * 60 * 60000L;
@@ -196,7 +237,7 @@ public class ActionManager {
                     
                     String finalMessage = message;
                     if (finalMessage != null) {
-                        finalMessage = finalMessage.replace("15 phút", durationText);
+                        finalMessage = finalMessage.replace("15 phút", durationText).replace(durationStr, durationText);
                     }
                     
                     Bukkit.getBanList(org.bukkit.BanList.Type.NAME).addBan(player.getName(), finalMessage, expires, "LovelyDetector");
@@ -240,6 +281,20 @@ public class ActionManager {
             if (admin.hasPermission("lovelydetector.admin")) {
                 admin.sendMessage(prefix + ChatColor.RED + player.getName() + " has been banned. Total bans: " + newTotal);
             }
+        }
+    }
+
+    public static long parseDuration(String durationStr) {
+        if (durationStr == null || durationStr.isEmpty()) return 15 * 60000L; // Default 15m
+        try {
+            long duration = Long.parseLong(durationStr.replaceAll("[^0-9]", ""));
+            if (durationStr.toLowerCase().contains("s")) return duration * 1000L;
+            if (durationStr.toLowerCase().contains("m")) return duration * 60000L;
+            if (durationStr.toLowerCase().contains("h")) return duration * 3600000L;
+            if (durationStr.toLowerCase().contains("d")) return duration * 86400000L;
+            return duration * 60000L; // Default to minutes
+        } catch (NumberFormatException e) {
+            return 15 * 60000L;
         }
     }
 }
