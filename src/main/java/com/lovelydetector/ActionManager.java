@@ -224,7 +224,7 @@ public class ActionManager {
         String prefix = ChatColor.translateAlternateColorCodes('&', plugin.getConfigManager().getConfig("config.yaml").getString("prefix", "&8[&bLovelyDetector&8] "));
         for (Player admin : Bukkit.getOnlinePlayers()) {
             if (admin.hasPermission("lovelydetector.admin")) {
-                admin.sendMessage(prefix + ChatColor.RED + player.getName() + " has been banned. Total bans: " + bans);
+                admin.sendMessage(prefix + ChatColor.RED + player.getName() + " has been banned. Total bans: " + newTotal);
             }
         }
     }
